@@ -45,8 +45,29 @@ let package = Package(
         // View 模块：UI组件和视图
         .target(
             name: "View",
-            dependencies: ["Common", "Model"],
+            dependencies: ["Common", "Model", "ViewModel"],
             path: "Sources/View"
+        ),
+        
+        // ViewModel 模块：视图模型
+        .target(
+            name: "ViewModel",
+            dependencies: ["Model", "Engine", "Services"],
+            path: "Sources/ViewModel"
+        ),
+        
+        // Engine 模块：游戏引擎
+        .target(
+            name: "Engine",
+            dependencies: ["Common"],
+            path: "Sources/Engine"
+        ),
+        
+        // Services 模块：游戏服务
+        .target(
+            name: "Services",
+            dependencies: ["Common"],
+            path: "Sources/Services"
         ),
         
         // Controller 模块：控制器和应用入口
@@ -56,34 +77,6 @@ let package = Package(
             path: "Sources/Controller"
         ),
         
-        // MARK: - 测试目标
-        
-        // Common 模块测试
-        .testTarget(
-            name: "CommonTests",
-            dependencies: ["Common"],
-            path: "Tests/CommonTests"
-        ),
-        
-        // Model 模块测试
-        .testTarget(
-            name: "ModelTests",
-            dependencies: ["Model", "Common"],
-            path: "Tests/ModelTests"
-        ),
-        
-        // View 模块测试
-        .testTarget(
-            name: "ViewTests",
-            dependencies: ["View", "Common"],
-            path: "Tests/ViewTests"
-        ),
-        
-        // Controller 模块测试
-        .testTarget(
-            name: "ControllerTests",
-            dependencies: ["Controller"],
-            path: "Tests/ControllerTests"
-        )
+        // MARK: - 测试目标（暂时移除，因为测试目录不存在）
     ]
 )

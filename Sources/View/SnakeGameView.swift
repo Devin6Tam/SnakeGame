@@ -2,10 +2,11 @@ import SwiftUI
 import AppKit
 import Common
 import Model
+import ViewModel
 
 /// 游戏主视图（View层）
 public struct SnakeGameView: View {
-    @StateObject private var game = SnakeGameModel()
+    @StateObject private var viewModel = SnakeGameViewModel()
     @State private var gridSize: CGFloat = 300
     
     private let gridWidth = GameConfig.gridWidth
@@ -63,8 +64,8 @@ public struct SnakeGameView: View {
                 .foregroundColor(ColorScheme.snakeHead)
             
             HStack(spacing: 30) {
-                scoreView(title: "当前分数", value: game.score, color: ColorScheme.buttonPrimary)
-                scoreView(title: "最高分", value: game.highScore, color: ColorScheme.buttonWarning)
+                scoreView(title: "当前分数", value: viewModel.score, color: ColorScheme.buttonPrimary)
+                scoreView(title: "最高分", value: viewModel.highScore, color: ColorScheme.buttonWarning)
             }
         }
     }
@@ -89,7 +90,7 @@ public struct SnakeGameView: View {
                 .font(.headline)
                 .foregroundColor(ColorScheme.textSecondary)
             
-            Picker("难度", selection: $game.difficulty) {
+            Picker("难度", selection: $viewModel.difficulty) {
                 ForEach(Difficulty.allCases, id: \.self) { difficulty in
                     Text(difficulty.rawValue).tag(difficulty)
                 }
@@ -97,7 +98,7 @@ public struct SnakeGameView: View {
             .pickerStyle(.segmented)
             .frame(maxWidth: 400)
             
-            Text(game.difficulty.description)
+            Text(viewModel.difficulty.description)
                 .font(.caption)
                 .foregroundColor(ColorScheme.textSecondary)
         }
@@ -107,7 +108,7 @@ public struct SnakeGameView: View {
     /// 游戏状态视图
     private var gameStateView: some View {
         Group {
-            switch game.gameState {
+            switch viewModel.gameState {
             case .notStarted:
                 statusText("游戏未开始", color: ColorScheme.statusNotStarted)
             case .playing:
@@ -188,12 +189,12 @@ public struct SnakeGameView: View {
             let cellHeight = size.height / CGFloat(gridHeight)
             
             // 绘制食物
-            if let food = game.food {
+            if let food = viewModel.food {
                 drawFood(at: food, in: context, cellWidth: cellWidth, cellHeight: cellHeight)
             }
             
             // 绘制蛇
-            for (index, point) in game.snake.enumerated() {
+            for (index, point) in viewModel.snake.enumerated() {
                 if index == 0 {
                     drawSnakeHead(at: point, in: context, cellWidth: cellWidth, cellHeight: cellHeight)
                 } else {
@@ -305,7 +306,7 @@ public struct SnakeGameView: View {
     
     /// 重新开始按钮
     private var restartButton: some View {
-        Button(action: { game.restartGame() }) {
+        Button(action: { viewModel.restartGame() }) {
             HStack {
                 Image(systemName: "arrow.clockwise")
                 Text("重新开始")
@@ -338,7 +339,7 @@ public struct SnakeGameView: View {
     
     /// 方向按钮
     private func directionButton(direction: Direction, icon: String) -> some View {
-        Button(action: { game.changeDirection(direction) }) {
+        Button(action: { viewModel.changeDirection(direction) }) {
             Image(systemName: icon)
                 .font(.title2)
                 .foregroundColor(.white)
@@ -373,7 +374,7 @@ public struct SnakeGameView: View {
     
     /// 按钮文本
     private var buttonText: String {
-        switch game.gameState {
+        switch viewModel.gameState {
         case .notStarted, .gameOver:
             return "开始游戏"
         case .playing:
@@ -385,7 +386,7 @@ public struct SnakeGameView: View {
     
     /// 按钮图标
     private var buttonIcon: String {
-        switch game.gameState {
+        switch viewModel.gameState {
         case .notStarted, .gameOver:
             return "play.fill"
         case .playing:
@@ -397,7 +398,7 @@ public struct SnakeGameView: View {
     
     /// 按钮颜色
     private var buttonColor: Color {
-        switch game.gameState {
+        switch viewModel.gameState {
         case .notStarted, .gameOver:
             return ColorScheme.buttonSuccess
         case .playing:
@@ -411,46 +412,46 @@ public struct SnakeGameView: View {
     
     /// 处理主按钮操作
     private func handleMainAction() {
-        switch game.gameState {
+        switch viewModel.gameState {
         case .notStarted, .gameOver:
-            game.startGame()
+            viewModel.startGame()
         case .playing:
-            game.pauseGame()
+            viewModel.pauseGame()
         case .paused:
-            game.resumeGame()
+            viewModel.resumeGame()
         }
     }
     
     /// 处理键盘按键
     private func handleKeyPress(_ press: KeyPress) {
-        guard game.gameState == .playing || game.gameState == .paused else { return }
+        guard viewModel.gameState == .playing || viewModel.gameState == .paused else { return }
         
         switch press.key {
         case .upArrow:
-            game.changeDirection(.up)
+            viewModel.changeDirection(.up)
         case .downArrow:
-            game.changeDirection(.down)
+            viewModel.changeDirection(.down)
         case .leftArrow:
-            game.changeDirection(.left)
+            viewModel.changeDirection(.left)
         case .rightArrow:
-            game.changeDirection(.right)
+            viewModel.changeDirection(.right)
         case "w":
-            game.changeDirection(.up)
+            viewModel.changeDirection(.up)
         case "s":
-            game.changeDirection(.down)
+            viewModel.changeDirection(.down)
         case "a":
-            game.changeDirection(.left)
+            viewModel.changeDirection(.left)
         case "d":
-            game.changeDirection(.right)
+            viewModel.changeDirection(.right)
         case " ":
-            if game.gameState == .playing {
-                game.pauseGame()
-            } else if game.gameState == .paused {
-                game.resumeGame()
+            if viewModel.gameState == .playing {
+                viewModel.pauseGame()
+            } else if viewModel.gameState == .paused {
+                viewModel.resumeGame()
             }
         case .return:
-            if game.gameState == .notStarted || game.gameState == .gameOver {
-                game.startGame()
+            if viewModel.gameState == .notStarted || viewModel.gameState == .gameOver {
+                viewModel.startGame()
             }
         default:
             break

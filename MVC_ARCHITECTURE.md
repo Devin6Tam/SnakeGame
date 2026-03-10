@@ -7,7 +7,7 @@
 ## 目录结构
 
 ```
-SnakeGame/
+sampleExercise/
 ├── Package.swift                      # Swift Package Manager 配置文件
 ├── Sources/
 │   ├── SnakeGame/                     # 主可执行目标
@@ -152,13 +152,13 @@ Common
 
 ### 构建项目
 ```bash
-cd /Users/devintan/Desktop/workspace/SnakeGame
+cd /Users/devintan/Desktop/workspace/sampleExercise
 swift build
 ```
 
 ### 运行项目
 ```bash
-cd /Users/devintan/Desktop/workspace/SnakeGame
+cd /Users/devintan/Desktop/workspace/sampleExercise
 swift run
 ```
 
