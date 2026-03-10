@@ -16,6 +16,8 @@ let package = Package(
         // 这里可以添加外部依赖
     ],
     targets: [
+        // MARK: - 主目标
+        
         // 主可执行目标
         .executableTarget(
             name: "SnakeGame",
@@ -24,8 +26,7 @@ let package = Package(
                 "Model",
                 "View",
                 "Controller"
-            ],
-            path: "Sources/SnakeGame"
+            ]
         ),
         
         // Common 模块：共享的数据结构和常量
@@ -53,6 +54,36 @@ let package = Package(
             name: "Controller",
             dependencies: ["View"],
             path: "Sources/Controller"
+        ),
+        
+        // MARK: - 测试目标
+        
+        // Common 模块测试
+        .testTarget(
+            name: "CommonTests",
+            dependencies: ["Common"],
+            path: "Tests/CommonTests"
+        ),
+        
+        // Model 模块测试
+        .testTarget(
+            name: "ModelTests",
+            dependencies: ["Model", "Common"],
+            path: "Tests/ModelTests"
+        ),
+        
+        // View 模块测试
+        .testTarget(
+            name: "ViewTests",
+            dependencies: ["View", "Common"],
+            path: "Tests/ViewTests"
+        ),
+        
+        // Controller 模块测试
+        .testTarget(
+            name: "ControllerTests",
+            dependencies: ["Controller"],
+            path: "Tests/ControllerTests"
         )
     ]
 )

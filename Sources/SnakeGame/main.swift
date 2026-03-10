@@ -1,4 +1,5 @@
+import SwiftUI
 import Controller
 
-// 应用入口点
+// 主可执行文件入口
 SnakeGameApp.main()
