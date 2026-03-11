@@ -1,6 +1,6 @@
 .git
 .build
 .swiftpm
-.DB_Store
-Sources/.DB_Store
+.DS_Store
+Sources/.DS_Store
 Tests/*
