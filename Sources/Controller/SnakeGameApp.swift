@@ -8,7 +8,9 @@ public struct SnakeGameApp: App {
     public var body: some Scene {
         WindowGroup {
             SnakeGameView()
-                .frame(minWidth: 600, minHeight: 800)
+                // 移除固定的最小尺寸，让窗口自适应
+                .frame(minWidth: 320, minHeight: 500)
         }
+        .windowResizability(.contentSize)
     }
 }

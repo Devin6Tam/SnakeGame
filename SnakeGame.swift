@@ -11,6 +11,7 @@ enum GameState {
 }
 
 // 贪吃蛇游戏模型
+@MainActor
 class SnakeGame: ObservableObject {
     // 游戏设置
     private let gridSize = 20
@@ -27,7 +28,7 @@ class SnakeGame: ObservableObject {
     @Published var direction: Direction = .right
     
     // 游戏循环
-    private var gameTimer: Timer?
+    private var gameTimer: Any?
     
     // 网格中的点
     struct Point: Hashable {
@@ -49,11 +50,21 @@ class SnakeGame: ObservableObject {
         }
     }
     
+    // 停止定时器
+    private func stopTimer() {
+        if let timer = gameTimer as? Timer {
+            timer.invalidate()
+        } else if let dispatchTimer = gameTimer as? DispatchSourceTimer {
+            dispatchTimer.cancel()
+        }
+        gameTimer = nil
+    }
+    
     // 暂停游戏
     func pauseGame() {
         if gameState == .playing {
             gameState = .paused
-            gameTimer?.invalidate()
+            stopTimer()
         }
     }
     
@@ -103,10 +114,18 @@ class SnakeGame: ObservableObject {
     
     // 开始游戏循环
     private func startGameLoop() {
-        gameTimer?.invalidate()
-        gameTimer = Timer.scheduledTimer(withTimeInterval: gameSpeed, repeats: true) { [weak self] _ in
+        stopTimer()
+        
+        // 使用 DispatchSourceTimer 代替 Timer，以更好地处理并发
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: gameSpeed)
+        
+        timer.setEventHandler { [weak self] in
             self?.moveSnake()
         }
+        
+        timer.resume()
+        gameTimer = timer
     }
     
     // 移动蛇
@@ -159,7 +178,7 @@ class SnakeGame: ObservableObject {
     // 游戏结束
     private func gameOver() {
         gameState = .gameOver
-        gameTimer?.invalidate()
+        stopTimer()
         
         if score > highScore {
             highScore = score

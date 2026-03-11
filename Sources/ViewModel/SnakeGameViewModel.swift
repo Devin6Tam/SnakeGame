@@ -14,10 +14,12 @@ public enum GameEvent {
     case difficultyChanged(Difficulty)
     case foodEaten(score: Int)
     case collisionDetected
+    case skinChanged(SnakeSkin)
 }
 
 /// 贪吃蛇游戏视图模型（ViewModel层）
 /// 职责：处理游戏逻辑和状态转换
+@MainActor
 public class SnakeGameViewModel: ObservableObject {
     // MARK: - 发布属性
     
@@ -36,6 +38,18 @@ public class SnakeGameViewModel: ObservableObject {
     /// 难度等级
     @Published public var difficulty: Difficulty = .medium
     
+    /// 当前皮肤
+    @Published public private(set) var currentSkin: SnakeSkin
+    
+    /// 可用皮肤列表
+    @Published public private(set) var availableSkins: [SnakeSkin]
+    
+    /// 蛇皮肤管理器
+    private let skinManager: SnakeSkinManager
+    
+    /// 特效管理器
+    @MainActor public let effectsManager = SnakeEffectsManager()
+    
     /// 游戏事件发布器
     public let eventPublisher = PassthroughSubject<GameEvent, Never>()
     
@@ -53,9 +67,15 @@ public class SnakeGameViewModel: ObservableObject {
     // MARK: - 初始化
     
     public init(gameEngine: GameEngine = DefaultGameEngine(), 
-                gameService: GameService = DefaultGameService()) {
+                gameService: GameService = DefaultGameService(),
+                skinManager: SnakeSkinManager = SnakeSkinManager()) {
         self.gameEngine = gameEngine
         self.gameService = gameService
+        self.skinManager = skinManager
+        
+        // 必须在所有存储属性初始化后才能访问 self
+        self.currentSkin = skinManager.currentSkin
+        self.availableSkins = skinManager.availableSkins
         
         // 加载保存的数据
         loadSavedData()
@@ -120,6 +140,27 @@ public class SnakeGameViewModel: ObservableObject {
         eventPublisher.send(.difficultyChanged(difficulty))
     }
     
+    /// 改变蛇皮肤
+    public func changeSkin(_ skin: SnakeSkin) {
+        skinManager.changeSkin(to: skin)
+        currentSkin = skin
+        eventPublisher.send(.skinChanged(skin))
+    }
+    
+    /// 获取下一个皮肤（循环切换）
+    public func nextSkin() {
+        guard let currentIndex = availableSkins.firstIndex(where: { $0.name == currentSkin.name }) else { return }
+        let nextIndex = (currentIndex + 1) % availableSkins.count
+        changeSkin(availableSkins[nextIndex])
+    }
+    
+    /// 获取上一个皮肤（循环切换）
+    public func previousSkin() {
+        guard let currentIndex = availableSkins.firstIndex(where: { $0.name == currentSkin.name }) else { return }
+        let previousIndex = (currentIndex - 1 + availableSkins.count) % availableSkins.count
+        changeSkin(availableSkins[previousIndex])
+    }
+    
     // MARK: - 游戏数据访问
     
     /// 获取蛇身位置
@@ -170,12 +211,25 @@ public class SnakeGameViewModel: ObservableObject {
                 self.gameService.saveHighScore(newScore)
             }
             
+            // 触发分数特效
+            if newScore > 0 {
+                Task { @MainActor in
+                    self.effectsManager.triggerScoreEffect(score: newScore)
+                }
+            }
+            
             self.eventPublisher.send(.foodEaten(score: newScore))
         }
         
         gameEngine.onGameOver = { [weak self] (finalScore: Int) in
             guard let self = self else { return }
             self.gameState = .gameOver
+            
+            // 触发碰撞特效
+            Task { @MainActor in
+                self.effectsManager.triggerCollisionEffect()
+            }
+            
             self.eventPublisher.send(.ended(score: finalScore))
         }
         

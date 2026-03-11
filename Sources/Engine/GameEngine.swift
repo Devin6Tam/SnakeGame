@@ -53,7 +53,7 @@ public class DefaultGameEngine: GameEngine {
     private var currentDirection: Direction = .right
     private var nextDirection: Direction = .right
     private var difficulty: Difficulty = .medium
-    private var gameTimer: Timer?
+    private var gameTimer: Any?
     
     // MARK: - 初始化
     
@@ -122,16 +122,28 @@ public class DefaultGameEngine: GameEngine {
     
     private func startTimer() {
         stopTimer()
-        gameTimer = Timer.scheduledTimer(
-            withTimeInterval: difficulty.moveInterval,
-            repeats: true
-        ) { [weak self] _ in
-            self?.moveSnake()
+        
+        // 使用 DispatchSourceTimer 代替 Timer，以更好地处理并发
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: difficulty.moveInterval)
+        
+        timer.setEventHandler {
+            [weak self] in
+            guard let self = self else { return }
+            // 直接调用，因为已经在主队列中
+            self.moveSnake()
         }
+        
+        timer.resume()
+        gameTimer = timer
     }
     
     private func stopTimer() {
-        gameTimer?.invalidate()
+        if let timer = gameTimer as? Timer {
+            timer.invalidate()
+        } else if let dispatchTimer = gameTimer as? DispatchSourceTimer {
+            dispatchTimer.cancel()
+        }
         gameTimer = nil
     }
     
@@ -218,6 +230,12 @@ public class DefaultGameEngine: GameEngine {
     }
     
     deinit {
-        stopTimer()
+        // 在 deinit 中直接清理定时器，不调用 @MainActor 方法
+        if let timer = gameTimer as? Timer {
+            timer.invalidate()
+        } else if let dispatchTimer = gameTimer as? DispatchSourceTimer {
+            dispatchTimer.cancel()
+        }
+        gameTimer = nil
     }
 }

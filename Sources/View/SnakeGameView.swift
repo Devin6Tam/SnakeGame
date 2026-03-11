@@ -15,42 +15,78 @@ public struct SnakeGameView: View {
     public init() {}
     
     public var body: some View {
-        VStack(spacing: 20) {
-            // 游戏标题和分数
-            headerView
-                .padding(.top, 20)
-            
-            // 难度选择器
-            difficultySelector
-            
-            // 游戏状态显示
-            gameStateView
-                .frame(height: 30)
-            
-            // 游戏网格
-            gameGridView
-                .padding(.vertical, 10)
-            
-            // 控制按钮
-            controlButtonsView
-            
-            // 方向控制按钮
-            directionControlButtonsView
-                .padding(.vertical, 10)
-            
-            // 游戏说明
-            instructionsView
-                .padding(.horizontal)
-            
-            Spacer()
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 20) {
+                    // 游戏标题和分数
+                    headerView
+                        .padding(.top, 20)
+                        .frame(maxWidth: .infinity)
+                    
+                    // 难度选择器
+                    difficultySelector
+                        .frame(maxWidth: .infinity)
+                    
+                    // 皮肤选择器
+                    skinSelector
+                        .frame(maxWidth: .infinity)
+                    
+                    // 游戏状态显示
+                    gameStateView
+                        .frame(height: 30)
+                        .frame(maxWidth: .infinity)
+                    
+                    // 游戏网格 - 响应式大小
+                    gameGridView
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                    
+                    // 控制按钮
+                    controlButtonsView
+                        .frame(maxWidth: .infinity)
+                    
+                    // 方向控制按钮
+                    directionControlButtonsView
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                    
+                    // 游戏说明
+                    instructionsView
+                        .frame(maxWidth: .infinity)
+                    
+                    Spacer()
+                        .frame(height: 40)
+                }
+                .frame(maxWidth: min(600, geometry.size.width - 40))
+                .frame(maxWidth: .infinity)
+                .padding()
+            }
+            .onAppear {
+                // 根据屏幕大小调整网格大小
+                calculateGridSize(screenSize: geometry.size)
+            }
+            .onChange(of: geometry.size) { oldValue, newValue in
+                calculateGridSize(screenSize: newValue)
+            }
         }
-        .padding()
         .background(ColorScheme.appBackground)
         .focusable()
         .onKeyPress(phases: [.down]) { press in
             handleKeyPress(press)
             return .handled
         }
+    }
+    
+    // MARK: - 屏幕适配
+    
+    /// 计算网格大小
+    private func calculateGridSize(screenSize: CGSize) {
+        let minDimension = min(screenSize.width, screenSize.height)
+        let availableWidth = screenSize.width - 40 // 减去padding
+        
+        // 根据屏幕宽度动态计算网格大小，最大不超过400，最小不小于200
+        let calculatedSize = min(availableWidth * 0.85, minDimension * 0.6, 400)
+        gridSize = max(calculatedSize, 200)
     }
     
     // MARK: - 子视图
@@ -62,12 +98,17 @@ public struct SnakeGameView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundColor(ColorScheme.snakeHead)
+                .frame(maxWidth: .infinity, alignment: .center)
             
             HStack(spacing: 30) {
+                Spacer()
                 scoreView(title: "当前分数", value: viewModel.score, color: ColorScheme.buttonPrimary)
+                Spacer()
                 scoreView(title: "最高分", value: viewModel.highScore, color: ColorScheme.buttonWarning)
+                Spacer()
             }
         }
+        .frame(maxWidth: .infinity)
     }
     
     /// 分数视图
@@ -103,6 +144,7 @@ public struct SnakeGameView: View {
                 .foregroundColor(ColorScheme.textSecondary)
         }
         .padding(.horizontal)
+        .frame(maxWidth: .infinity)
     }
     
     /// 游戏状态视图
@@ -119,6 +161,7 @@ public struct SnakeGameView: View {
                 statusText("游戏结束!", color: ColorScheme.statusGameOver)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
     
     /// 状态文本
@@ -137,8 +180,13 @@ public struct SnakeGameView: View {
             // 网格线
             gridLines
             
-            // 蛇和食物
-            snakeAndFoodView
+            ZStack {
+                // 蛇和食物（使用新的渲染器）
+                SnakeRenderer(viewModel: viewModel, gridSize: gridSize)
+                
+                // 特效层
+                SnakeEffectsRenderer(effectsManager: viewModel.effectsManager, gridSize: gridSize)
+            }
         }
     }
     
@@ -182,121 +230,85 @@ public struct SnakeGameView: View {
         .frame(width: gridSize, height: gridSize)
     }
     
-    /// 蛇和食物视图
-    private var snakeAndFoodView: some View {
-        Canvas { context, size in
-            let cellWidth = size.width / CGFloat(gridWidth)
-            let cellHeight = size.height / CGFloat(gridHeight)
+    /// 皮肤选择器
+    private var skinSelector: some View {
+        VStack(spacing: 12) {
+            Text("蛇皮肤")
+                .font(.headline)
+                .foregroundColor(ColorScheme.textSecondary)
             
-            // 绘制食物
-            if let food = viewModel.food {
-                drawFood(at: food, in: context, cellWidth: cellWidth, cellHeight: cellHeight)
-            }
-            
-            // 绘制蛇
-            for (index, point) in viewModel.snake.enumerated() {
-                if index == 0 {
-                    drawSnakeHead(at: point, in: context, cellWidth: cellWidth, cellHeight: cellHeight)
-                } else {
-                    drawSnakeBody(at: point, in: context, cellWidth: cellWidth, cellHeight: cellHeight)
+            // 根据屏幕宽度动态调整皮肤预览大小
+            GeometryReader { geometry in
+                let previewSize = min(80, (geometry.size.width - 60) / 4)
+                
+                // 皮肤预览网格 - 响应式且居中
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: max(8, min(16, (geometry.size.width - 80) / 10))) {
+                        ForEach(viewModel.availableSkins, id: \.name) { skin in
+                            Button(action: { viewModel.changeSkin(skin) }) {
+                                SkinPreview(
+                                    skin: skin,
+                                    isSelected: viewModel.currentSkin.name == skin.name,
+                                    size: previewSize
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity)
                 }
             }
+            .frame(height: 90)
+            
+            // 当前皮肤描述
+            VStack(spacing: 4) {
+                Text(viewModel.currentSkin.name)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(ColorScheme.textPrimary)
+                
+                Text(viewModel.currentSkin.description)
+                    .font(.caption)
+                    .foregroundColor(ColorScheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(width: gridSize, height: gridSize)
-    }
-    
-    /// 绘制食物
-    private func drawFood(at point: Point, in context: GraphicsContext, cellWidth: CGFloat, cellHeight: CGFloat) {
-        let foodRect = CGRect(
-            x: CGFloat(point.x) * cellWidth,
-            y: CGFloat(point.y) * cellHeight,
-            width: cellWidth,
-            height: cellHeight
-        )
-        
-        let foodPath = Circle().path(in: foodRect.insetBy(dx: 3, dy: 3))
-        context.fill(foodPath, with: .color(ColorScheme.food))
-        context.stroke(foodPath, with: .color(ColorScheme.food.opacity(0.6)), lineWidth: 1.5)
-    }
-    
-    /// 绘制蛇头
-    private func drawSnakeHead(at point: Point, in context: GraphicsContext, cellWidth: CGFloat, cellHeight: CGFloat) {
-        let rect = CGRect(
-            x: CGFloat(point.x) * cellWidth,
-            y: CGFloat(point.y) * cellHeight,
-            width: cellWidth,
-            height: cellHeight
-        )
-        
-        let headPath = RoundedRectangle(cornerRadius: 5).path(in: rect.insetBy(dx: 1.5, dy: 1.5))
-        context.fill(headPath, with: .color(ColorScheme.snakeHead))
-        context.stroke(headPath, with: .color(ColorScheme.snakeHead.opacity(0.7)), lineWidth: 1)
-        
-        // 眼睛
-        drawEyes(in: rect, context: context, cellWidth: cellWidth, cellHeight: cellHeight)
-    }
-    
-    /// 绘制蛇头眼睛
-    private func drawEyes(in rect: CGRect, context: GraphicsContext, cellWidth: CGFloat, cellHeight: CGFloat) {
-        let eyeSize = cellWidth / 4
-        
-        let leftEyeRect = CGRect(
-            x: rect.minX + cellWidth / 4,
-            y: rect.minY + cellHeight / 4,
-            width: eyeSize,
-            height: eyeSize
-        )
-        let rightEyeRect = CGRect(
-            x: rect.maxX - cellWidth / 4 - eyeSize,
-            y: rect.minY + cellHeight / 4,
-            width: eyeSize,
-            height: eyeSize
-        )
-        
-        context.fill(Circle().path(in: leftEyeRect), with: .color(ColorScheme.snakeEye))
-        context.fill(Circle().path(in: rightEyeRect), with: .color(ColorScheme.snakeEye))
-    }
-    
-    /// 绘制蛇身
-    private func drawSnakeBody(at point: Point, in context: GraphicsContext, cellWidth: CGFloat, cellHeight: CGFloat) {
-        let rect = CGRect(
-            x: CGFloat(point.x) * cellWidth,
-            y: CGFloat(point.y) * cellHeight,
-            width: cellWidth,
-            height: cellHeight
-        )
-        
-        let bodyPath = RoundedRectangle(cornerRadius: 4).path(in: rect.insetBy(dx: 1.5, dy: 1.5))
-        context.fill(bodyPath, with: .color(ColorScheme.snakeBody))
-        context.stroke(bodyPath, with: .color(ColorScheme.snakeBody.opacity(0.6)), lineWidth: 1)
+        .padding(.horizontal)
+        .frame(maxWidth: .infinity)
     }
     
     /// 控制按钮视图
     private var controlButtonsView: some View {
         VStack(spacing: 15) {
             HStack(spacing: 20) {
-                mainActionButton
-                restartButton
+                Spacer()
+                mainActionButton()
+                restartButton()
+                Spacer()
             }
             
             // 方向控制提示
             Text("使用方向键或WASD控制移动")
                 .font(.caption)
                 .foregroundColor(ColorScheme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
+        .frame(maxWidth: .infinity)
     }
     
     /// 主操作按钮
-    private var mainActionButton: some View {
+    private func mainActionButton(width: CGFloat = 160, height: CGFloat = 44) -> some View {
         Button(action: handleMainAction) {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: buttonIcon)
+                    .font(.system(size: 18))
                 Text(buttonText)
+                    .font(.system(size: 16))
             }
-            .font(.headline)
             .foregroundColor(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
+            .frame(width: width, height: height)
             .background(buttonColor)
             .cornerRadius(12)
             .shadow(color: buttonColor.opacity(0.3), radius: 4, x: 0, y: 2)
@@ -305,16 +317,16 @@ public struct SnakeGameView: View {
     }
     
     /// 重新开始按钮
-    private var restartButton: some View {
+    private func restartButton(width: CGFloat = 160, height: CGFloat = 44) -> some View {
         Button(action: { viewModel.restartGame() }) {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 18))
                 Text("重新开始")
+                    .font(.system(size: 16))
             }
-            .font(.headline)
             .foregroundColor(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
+            .frame(width: width, height: height)
             .background(ColorScheme.buttonRestart)
             .cornerRadius(12)
             .shadow(color: ColorScheme.buttonRestart.opacity(0.3), radius: 4, x: 0, y: 2)
@@ -325,25 +337,33 @@ public struct SnakeGameView: View {
     /// 方向控制按钮视图
     private var directionControlButtonsView: some View {
         VStack(spacing: 10) {
+            Spacer()
             directionButton(direction: .up, icon: "arrow.up")
+            Spacer()
             
             HStack(spacing: 10) {
+                Spacer()
                 directionButton(direction: .left, icon: "arrow.left")
-                Spacer().frame(width: 80)
+                Spacer()
+                    .frame(width: 80)
                 directionButton(direction: .right, icon: "arrow.right")
+                Spacer()
             }
+            Spacer()
             
             directionButton(direction: .down, icon: "arrow.down")
+            Spacer()
         }
+        .frame(maxWidth: .infinity)
     }
     
     /// 方向按钮
-    private func directionButton(direction: Direction, icon: String) -> some View {
+    private func directionButton(direction: Direction, icon: String, size: CGFloat = 60) -> some View {
         Button(action: { viewModel.changeDirection(direction) }) {
             Image(systemName: icon)
-                .font(.title2)
+                .font(.system(size: 24, weight: .medium))
                 .foregroundColor(.white)
-                .frame(width: 60, height: 60)
+                .frame(width: size, height: size)
                 .background(ColorScheme.buttonPrimary)
                 .cornerRadius(12)
                 .shadow(color: ColorScheme.buttonPrimary.opacity(0.3), radius: 4, x: 0, y: 2)
@@ -357,17 +377,20 @@ public struct SnakeGameView: View {
             Text("游戏说明:")
                 .font(.headline)
                 .foregroundColor(ColorScheme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             
-            Text("• 使用方向键控制蛇的移动")
+            Text("• 使用方向键或WASD控制蛇的移动")
             Text("• 吃到食物可以增加分数")
             Text("• 避免撞到墙壁或自己的身体")
             Text("• 暂停后可以继续游戏")
+            Text("• 不同难度有不同的游戏速度")
         }
         .font(.caption)
         .foregroundColor(ColorScheme.textSecondary.opacity(0.9))
         .padding()
         .background(ColorScheme.cardBackground)
         .cornerRadius(12)
+        .frame(maxWidth: .infinity)
     }
     
     // MARK: - 计算属性
